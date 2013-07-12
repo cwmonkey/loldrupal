@@ -50,13 +50,10 @@ class lolDrupalView {
 		$separated = preg_replace('%(?<!^)\p{Lu}%usD', '_$0', $n);
 		$lower = mb_strtolower($separated, 'utf-8');
 		$parts = explode('_', $lower);
-		$print_value = false;
 		$check_exists = false;
 		$each_value = false;
 		if ( $parts[0] == 'get' ) {
 			array_shift($parts);
-		} elseif ( $parts[0] == 'print' ) {
-			$print_value = array_shift($parts);
 		} elseif ( $parts[0] == 'exists' ) {
 			$check_exists = array_shift($parts);
 		} elseif ( $parts[0] == 'each' ) {
@@ -71,7 +68,11 @@ class lolDrupalView {
 		$retval = null;
 
 		if ( !$use_node ) {
-			if ( isset($this->variables[$name]) ) {
+			if ( method_exists($this, 'get_' . $name) ) {
+				if ( $check_exists ) return true;
+				$var_found = true;
+				$retval = call_user_func_array(array($this, 'get_' . $name), $args);
+			} elseif ( isset($this->variables[$name]) ) {
 				if ( $check_exists ) return true;
 				$var_found = true;
 				$retval = $this->variables[$name];
@@ -83,9 +84,13 @@ class lolDrupalView {
 		}
 
 		if ( !$var_found ) {
-			if ( isset($this->variables[$name]) ) {
+			if ( method_exists($this, 'get_' . $field_name) ) {
 				if ( $check_exists ) return true;
-				$retval = $this->_snode($this->variables['node'], $name);
+				$var_found = true;
+				$retval = call_user_func_array(array($this, 'get_' . $field_name), $args);
+			} elseif ( isset($this->variables[$field_name]) ) {
+				if ( $check_exists ) return true;
+				$retval = $this->_snode($this->variables['node'], $field_name);
 			} elseif ( isset($this->variables[$field_name]) ) {
 				if ( $check_exists ) return true;
 				$retval = $this->_snode($this->variables['node'], $field_name);
@@ -99,34 +104,44 @@ class lolDrupalView {
 			return $this->_seach(&$this->eaches[$n]);
 		}
 
-		if ( $print_value ) {
-			if ( is_array($retval) ) {
-				foreach ( $retval as $key => $value ) {
-					return $this->_sprint($value);
-				}
-			} else {
-				return $this->_sprint($retval);
-			}
-		} else {
-			return $retval;
-		}
-	}
-
-	public function _sprint($var) {
-		if ( is_string($var) ) {
-			return print $var;
-		} elseif ( isset($var['safe_value']) ) {
-			return print $var['safe_value'];
-		} elseif ( isset($var['value']) ) {
-			return print $var['value'];
-		}
-		return '';
+		return new lolDrupalValue($retval);
 	}
 
 	public function _snode($var, $prop, $type = 'node') {
 		$retval = field_get_items($type, $var, $prop);
     	if ( is_array($retval) ) reset($retval);
     	return $retval;
+	}
+}
+
+class lolDrupalValue extends lolDrupalView {
+	public $value;
+
+	public function __construct($value) {
+		$this->value = $value;
+	}
+
+	public function __toString() {
+		if ( is_array($this->value) && isset($this->value[0]) ) {
+			return $this->_sprint($this->value[0]);
+		} else {
+			return $this->_sprint($this->value);
+		}
+	}
+
+	public function _sprint($var) {
+		if ( is_string($var) ) {
+			return $var;
+		} elseif ( isset($var['safe_value']) ) {
+			return $var['safe_value'];
+		} elseif ( isset($var['value']) ) {
+			return $var['value'];
+		}
+		return '';
+	}
+
+	public function each() {
+		return $this->_seach(&$this->value);
 	}
 
 	public function _seach(&$var) {
@@ -165,14 +180,25 @@ class lolDrupalView {
 
 		return array($k, $ea);
 	}
-
 }
 
-class lolDrupalTaxonomy extends lolDrupalView {
+class lolDrupalTaxonomy extends lolDrupalValue {
 	public $taxonomy;
 
 	public function __construct($taxonomy) {
 		$this->taxonomy = $taxonomy;
+	}
+
+	public function get_url() {
+		if ( isset($this->taxonomy->_surl) ) {
+			$retval = $this->taxonomy->_surl;
+		} else {
+			$uri = entity_uri('taxonomy_term', $this->taxonomy);
+			$this->taxonomy->_surl = url($uri['path']);
+			$retval = $this->taxonomy->_surl;
+		}
+
+		return $retval;
 	}
 
 	public function __call($n, $args = null) {
@@ -194,13 +220,6 @@ class lolDrupalTaxonomy extends lolDrupalView {
 
 		if ( $name == 'url' ) {
 			if ( $check_exists ) return true;
-			if ( isset($this->taxonomy->_surl) ) {
-				$retval = $this->taxonomy->_surl;
-			} else {
-				$uri = entity_uri('taxonomy_term', $this->taxonomy);
-				$this->taxonomy->_surl = url($uri['path']);
-				$retval = $this->taxonomy->_surl;
-			}
 		} else {
 			if ( isset($this->taxonomy->$name) ) {
 				if ( $check_exists ) return true;
