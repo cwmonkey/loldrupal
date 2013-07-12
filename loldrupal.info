@@ -1,0 +1,44 @@
+name = LOLDrupal
+description = Fuck Drupal.
+screenshot = screenshot.png
+engine = phptemplate
+; base theme = takepart_core
+core = 7.x
+php = 5.2
+
+;-------------- F E A T U R E S -------------
+features[] = logo
+features[] = favicon
+features[] = name
+features[] = slogan
+features[] = node_user_picture
+features[] = comment_user_picture
+features[] = comment_user_verification
+
+;-------------- R E G I O N S -------------
+
+;-- Required Regions
+regions[page_top] = Page Top
+regions[content] = Content
+regions[page_bottom] = Page Bottom
+
+;-- Core Regions
+regions[header] = Header
+regions[content_top] = Top Content
+regions[footer] = Footer
+regions[sidebar_first] = Left Rail
+regions[sidebar_second] = Right Rail
+regions[help] = Help
+regions[highlighted] = Highlighted
+
+regions[node_region] = Node
+
+
+;-------------- C S S -------------
+stylesheets[all][] = css/reset.css
+css[css/reset.css][options][weight] = -1
+stylesheets[all][] = css/style.css
+stylesheets[all][] = css/responsive.css
+
+;-------------- JS -------------
+scripts[] = js/script.js
