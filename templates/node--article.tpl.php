@@ -11,3 +11,11 @@
 		<? endwhile ?>
 	</ul>
 <? endif ?>
+
+<?=$v->getimgImage('article_main_image') ?>
+
+<pre>
+<? var_dump(array_keys((array)$node)) ?>
+
+<? var_dump(array_keys(get_defined_vars())) ?>
+</pre>

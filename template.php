@@ -1,5 +1,29 @@
 <?php
 
+function loldrupal_image_style($variables) {
+  $style_name = $variables['style_name'];
+  $path = $variables['path'];
+  
+  // theme_image() can only honor the $getsize parameter with local file paths.
+  // The derivative image is not created until it has been requested so the file
+  // may not yet exist, in this case we just fallback to the URL.
+  $style_path = image_style_path($style_name, $path);
+  if (!file_exists($style_path)) {
+    $style_path = image_style_url($style_name, $path);
+  }
+  $variables['path'] = $style_path;
+  if (
+
+  is_file($style_path)) {
+    if (list($width, $height, $type, $attributes) = @getimagesize($style_path)) {
+      $variables['width'] = $width;
+      $variables['height'] = $height;
+    }
+  }
+  
+  return theme('image', $variables);
+}
+
 /* Template helpers */
 
 // pretty print arrays
@@ -35,10 +59,16 @@ function _l($someArray, $prepend = '') {
 }
 
 function loldrupal_preprocess_node(&$variables) {
+	unset($variables['field_image']);
+	unset($variables['field_tags']);
+	unset($variables['body']);
+	unset($variables['title']);
+	unset($variables['tags']);
+
 	$variables['v'] = new lolDrupalView($variables);
 }
 
-class lolDrupalView {
+/*class lolDrupalView {
 	public $variables;
 
 	public function __construct($variables) {
@@ -72,14 +102,26 @@ class lolDrupalView {
 				if ( $check_exists ) return true;
 				$var_found = true;
 				$retval = call_user_func_array(array($this, 'get_' . $name), $args);
-			} elseif ( isset($this->variables[$name]) ) {
-				if ( $check_exists ) return true;
-				$var_found = true;
-				$retval = $this->variables[$name];
-			} elseif ( isset($this->variables[$field_name]) ) {
-				if ( $check_exists ) return true;
-				$var_found = true;
-				$retval = $this->variables[$field_name];
+			} elseif ( is_array($this->variables) ) {
+				if ( isset($this->variables[$name]) ) {
+					if ( $check_exists ) return true;
+					$var_found = true;
+					$retval = $this->variables[$name];
+				} elseif ( isset($this->variables[$field_name]) ) {
+					if ( $check_exists ) return true;
+					$var_found = true;
+					$retval = $this->variables[$field_name];
+				}
+			} elseif ( is_object($this->variables) ) {
+				if ( isset($this->variables->$name) ) {
+					if ( $check_exists ) return true;
+					$var_found = true;
+					$retval = $this->variables->$name;
+				} elseif ( isset($this->variables->$field_name) ) {
+					if ( $check_exists ) return true;
+					$var_found = true;
+					$retval = $this->variables->$field_name;
+				}
 			}
 		}
 
@@ -88,10 +130,10 @@ class lolDrupalView {
 				if ( $check_exists ) return true;
 				$var_found = true;
 				$retval = call_user_func_array(array($this, 'get_' . $field_name), $args);
-			} elseif ( isset($this->variables[$field_name]) ) {
+			} elseif ( isset($this->variables['node']->$name) ) {
 				if ( $check_exists ) return true;
-				$retval = $this->_snode($this->variables['node'], $field_name);
-			} elseif ( isset($this->variables[$field_name]) ) {
+				$retval = $this->_snode($this->variables['node'], $name);
+			} elseif ( isset($this->variables['node']->$field_name) ) {
 				if ( $check_exists ) return true;
 				$retval = $this->_snode($this->variables['node'], $field_name);
 			}
@@ -127,6 +169,10 @@ class lolDrupalValue extends lolDrupalView {
 		} else {
 			return $this->_sprint($this->value);
 		}
+	}
+
+	public function get_img($image_style) {
+
 	}
 
 	public function _sprint($var) {
@@ -200,44 +246,6 @@ class lolDrupalTaxonomy extends lolDrupalValue {
 
 		return $retval;
 	}
+}*/
 
-	public function __call($n, $args = null) {
-		$separated = preg_replace('%(?<!^)\p{Lu}%usD', '_$0', $n);
-		$lower = mb_strtolower($separated, 'utf-8');
-		$parts = explode('_', $lower);
-		$print_value = false;
-		$check_exists = false;
-		if ( $parts[0] == 'get' ) {
-			array_shift($parts);
-		} elseif ( $parts[0] == 'exists' ) {
-			$check_exists = array_shift($parts);
-		} elseif ( $parts[0] == 'print' ) {
-			$print_value = array_shift($parts);
-		}
-		$name = implode('_', $parts);
-		$retval = null;
-		$var_found = false;
-
-		if ( $name == 'url' ) {
-			if ( $check_exists ) return true;
-		} else {
-			if ( isset($this->taxonomy->$name) ) {
-				if ( $check_exists ) return true;
-				$var_found = true;
-				$retval = $this->taxonomy->$name;
-			}
-		}
-
-		if ( $print_value ) {
-			if ( is_array($retval) ) {
-				foreach ( $retval as $key => $value ) {
-					return $this->_sprint($value);
-				}
-			} else {
-				return $this->_sprint($retval);
-			}
-		} else {
-			return $retval;
-		}
-	}
-}
+include('lolView.class.php');
