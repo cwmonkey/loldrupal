@@ -102,18 +102,15 @@ class lolDrupalView extends lolView {
 		return $retval;
 	}
 
-	public function lolActionGetimg($keys, $name, $args) {
-		$var = $this->lolActionGet($keys, $name, $args);
-		if ( $var ) {
-			return $this->_simage($var->vars, @$args[0]);
-		}
-
-		return null;
+	public function getImgTag($style = null) {
+		return $this->_simage($this->vars, $style);
 	}
 
 	public function _simage($var, $style = null) {
-		if ( isset($var['file']) ) {
+		if ( isset($var['file'])  ) {
 			$image = (array)$var['file'];
+		} elseif ( isset($var['uri'])  ) {
+			$image = $var;
 		} elseif ( isset($var['type']) && $var['type'] == 'image') {
 			$image = $var;
 		} elseif ( isset($var[0]) && isset($var[0]['file']) ) {
@@ -175,7 +172,7 @@ class lolDrupalView extends lolView {
 		}
 
 		if ( isset($ea['node']) ) {
-			return array($k, $ea['node']);
+			return array($k, new $this->className($ea['node']));
 		}
 
 		if ( isset($ea['_staxonomy_term']) ) {
@@ -192,7 +189,7 @@ class lolDrupalView extends lolView {
 		if ( $taxonomy_term ) {
 			$uri = entity_uri('taxonomy_term', $taxonomy_term);
 			$taxonomy_term->url = url($uri['path']);
-			$ea['_staxonomy_term'] = new lolDrupalView($taxonomy_term);
+			$ea['_staxonomy_term'] = new $this->className($taxonomy_term);
 			return array($k, $ea['_staxonomy_term']);
 		}
 
@@ -200,7 +197,7 @@ class lolDrupalView extends lolView {
 			$ea = node_load($ea['nid']);
 		}
 
-		return array($k, $ea);
+		return array($k, new $this->className($ea));
 	}
 
 	public function lolNames($name) {
